@@ -1,65 +1,187 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+
+interface Post {
+  _id: string;
+  titulo: string;
+  content: string;
+  authorId: string;
+}
 
 export default function Home() {
+  // Estados para Login y Registro
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [userUID, setUserUID] = useState<string | null>(null);
+
+  // Estados para crear Post
+  const [titulo, setTitulo] = useState("");
+  const [content, setContent] = useState("");
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    const savedUID = localStorage.getItem("userUID");
+    if (savedUID) setUserUID(savedUID);
+    cargarPosts();
+  }, []);
+
+  const cargarPosts = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/listPost");
+      const data = await res.json();
+      if (res.ok) setPosts(data.posts);
+    } catch (error) {
+      console.error("Error al cargar posts:", error);
+    }
+  };
+
+  // 🔥 NUEVA FUNCIÓN: Registrar Usuario
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:3001/createUser", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("¡Usuario creado con éxito! Ahora puedes iniciar sesión.");
+        setEmail("");
+        setPassword("");
+      } else {
+        alert(`Error al registrar: ${data.msj}`);
+      }
+    } catch (error) {
+      alert("Error al conectar con el servidor.");
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:3001/logIn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        const uid = data.response.user.uid;
+        localStorage.setItem("userUID", uid);
+        setUserUID(uid);
+        alert("¡Sesión iniciada!");
+        setEmail("");
+        setPassword("");
+      } else {
+        alert(`Error: ${data.msj || "Credenciales incorrectas"}`);
+      }
+    } catch (error) {
+      alert("Error al iniciar sesión.");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/logOut", { method: "POST" });
+      if (res.ok) {
+        localStorage.removeItem("userUID");
+        setUserUID(null);
+        alert("Sesión cerrada.");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userUID) return alert("Inicia sesión primero.");
+
+    try {
+      const res = await fetch("http://localhost:3001/createPost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, content, authorId: userUID }),
+      });
+      if (res.ok) {
+        alert("¡Post creado!");
+        setTitulo("");
+        setContent("");
+        cargarPosts();
+      }
+    } catch (error) {
+      alert("Error al crear post.");
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main style={{ padding: "2rem", fontFamily: "sans-serif", maxWidth: "800px", margin: "0 auto" }}>
+      <h1>Examen 2 - Plataforma de Posts</h1>
+      <hr />
+
+      {/* SECCIÓN DE AUTENTICACIÓN */}
+      <section style={{ margin: "2rem 0" }}>
+        {!userUID ? (
+          <div style={{ display: "flex", gap: "40px" }}>
+            {/* FORMULARIO DE REGISTRO */}
+            <div>
+              <h2>1. Registrarse</h2>
+              <form onSubmit={handleRegister} style={{ display: "flex", gap: "10px", flexDirection: "column", width: "250px" }}>
+                <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <input type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <button type="submit" style={{ backgroundColor: "#4ade80", border: "none", padding: "8px", cursor: "pointer" }}>Crear Cuenta</button>
+              </form>
+            </div>
+
+            {/* FORMULARIO DE LOGIN */}
+            <div>
+              <h2>2. Ingresar</h2>
+              <form onSubmit={handleLogin} style={{ display: "flex", gap: "10px", flexDirection: "column", width: "250px" }}>
+                <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <input type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <button type="submit" style={{ backgroundColor: "#60a5fa", border: "none", padding: "8px", cursor: "pointer" }}>Iniciar Sesión</button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <div style={{ backgroundColor: "#cf6706", padding: "1rem", borderRadius: "5px" }}>
+            <p>🟢 Autenticado con UID: <strong>{userUID}</strong></p>
+            <button style={{ cursor: "pointer" }} onClick={handleLogout}>Cerrar Sesión</button>
+          </div>
+        )}
+      </section>
+
+      <hr />
+
+      {/* SECCIÓN PARA CREAR POSTS */}
+      <section style={{ margin: "2rem 0" }}>
+        <h2>Crear Nuevo Post</h2>
+        <form onSubmit={handleCreatePost} style={{ display: "flex", gap: "10px", flexDirection: "column", width: "400px" }}>
+          <input type="text" placeholder="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
+          <textarea placeholder="Contenido..." value={content} onChange={(e) => setContent(e.target.value)} rows={3} required />
+          <button type="submit" disabled={!userUID}>Publicar Post</button>
+        </form>
+      </section>
+
+      <hr />
+
+      {/* SECCIÓN DE LISTADO */}
+      <section style={{ margin: "2rem 0" }}>
+        <h2>Feed de Publicaciones</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+          {posts.map((post) => (
+            <div key={post._id} style={{ border: "1px solid #ccc", padding: "1rem", borderRadius: "5px" }}>
+              <h3>{post.titulo}</h3>
+              <p>{post.content}</p>
+              <small style={{ color: "#666" }}>Autor UID: <code>{post.authorId}</code></small>
+            </div>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
