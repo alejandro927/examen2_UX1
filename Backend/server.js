@@ -39,37 +39,38 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 
 // CRUD Firebase
-/*
 app.post('/createUser', async (req, res) => {
     try {
+        const { email, password, nombre, apellido, username } = req.body;
+
+        // Crear el usuario en Firebase (Solo email y password)
         const auth = getAuth(firebaseApp);
-        const firebaseResponse = await createUserWithEmailAndPassword(auth, req.body.email, req.body.password, req.body.nombre, req.body.apellido);
-        res.status(201).send(
-            {
-                msj: "Usuario creado exitosamente en Firebase y MongoDB", "idUsuarioMongo": "id_mongo", "idUsuarioFirebase": "id_firebase",
-                response: firebaseResponse
-            }
-        );
-    } catch (e) {
-        res.status(500).send({
-            msj: 'No se pudo crear el usuario :( ',
-            error: e
-        });
-    }
-});
-*/
-app.post('/createUser', async (req, res) => {
-    try {
-        const auth = getAuth(firebaseApp);
-        const firebaseResponse = await createUserWithEmailAndPassword(auth, req.body.email, req.body.password);
+        const firebaseResponse = await createUserWithEmailAndPassword(auth, email, password);
+
+        // Extraemos el UID único que Firebase le asignó
+        const firebaseUID = firebaseResponse.user.uid;
+
+        // Guardar los datos de perfil en MongoDB vinculados a ese UID de firebase
+        const perfilUsuario = {
+            _id: firebaseUID,
+            nombre: nombre,
+            apellido: apellido,
+            username: username,
+            email: email,
+            fechaRegistro: new Date()
+        };
+
+        await client.db("Base").collection('usuarios').insertOne(perfilUsuario);
 
         res.status(201).send({
-            msj: "Usuario creado exitosamente en Firebase",
-            response: firebaseResponse
+            msj: "Usuario creado exitosamente en Firebase y MongoDB",
+            idUsuarioMongo: perfilUsuario._id,
+            idUsuarioFirebase: firebaseUID
         });
+
     } catch (e) {
         res.status(500).send({
-            msj: 'No se pudo crear el usuario :( ',
+            msj: 'Hubo un error en el registro',
             error: e.message
         });
     }
@@ -153,7 +154,7 @@ app.put('/editPost/:id', async (req, res) => {
         };
         const nuevaInfo = {
             $set: {
-                "title": req.body.titulo,
+                "titulo": req.body.titulo,
                 "content": req.body.content,
                 "authorId": req.body.authorId
             }
