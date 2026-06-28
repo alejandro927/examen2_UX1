@@ -19,14 +19,18 @@ export const AuthSection: React.FC<AuthSectionProps> = ({
   isRegistering = false,
   isLoggingIn = false
 }) => {
+  console.log('AuthSection - userUID:', userUID); // Debug
+
   if (userUID) {
     return (
       <div className="bg-gradient-to-br from-emerald-50 to-white border-l-4 border-emerald-600 p-6 rounded-lg shadow-sm mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <Badge variant="success">Usuario Conectado</Badge>
+            <Badge variant="success">✅ Usuario Conectado</Badge>
             <p className="text-sm text-gray-600 mt-2">
-              Firebase UID: <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">{userUID}</code>
+              Firebase UID: <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
+                {userUID || 'Cargando...'}
+              </code>
             </p>
           </div>
           <Button variant="danger" size="md" onClick={onLogout}>

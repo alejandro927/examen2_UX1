@@ -6,16 +6,12 @@ export const useAuth = () => {
 
   useEffect(() => {
     const savedUID = localStorage.getItem('userUID');
-    if (savedUID) setUserUID(savedUID);
+    if (savedUID) {
+      setUserUID(savedUID);
+    }
   }, []);
 
-  const handleRegister = async (data: {
-    email: string;
-    password: string;
-    nombre: string;
-    apellido: string;
-    username: string;
-  }) => {
+  const handleRegister = async (data: any) => {
     setIsLoading(true);
     try {
       const res = await fetch('http://localhost:3001/createUser', {
@@ -30,7 +26,7 @@ export const useAuth = () => {
         alert(`¡Usuario creado exitosamente! ID Mongo: ${result.idUsuarioMongo}`);
         return true;
       } else {
-        alert(`Fallo en el registro: ${result.msj}`);
+        alert(`Fallo en el registro: ${result.msj}\nDetalle: ${result.error || ""}`);
         return false;
       }
     } catch (error) {
@@ -51,18 +47,31 @@ export const useAuth = () => {
       });
       
       const result = await res.json();
+      console.log('Respuesta del login:', result); // Debug
       
       if (res.ok) {
-        const uid = result.response.user.uid;
+        const uid = result.uid;
+        console.log('UID recibido:', uid); // Debug
+        
+        if (!uid) {
+          alert('Error: No se recibió UID del servidor');
+          return false;
+        }
+        
+        // Guardar en localStorage
         localStorage.setItem('userUID', uid);
+        
+        // Actualizar estado
         setUserUID(uid);
+        
         alert('Autenticación completada. ¡Bienvenido de nuevo!');
         return true;
       } else {
-        alert(`Error al entrar: ${result.msj}`);
+        alert(`Error al entrar: ${result.msj}\nDetalle: ${result.error || ""}`);
         return false;
       }
     } catch (error) {
+      console.error('Error en login:', error);
       alert('Error en el proceso de inicio de sesión.');
       return false;
     } finally {
@@ -71,6 +80,7 @@ export const useAuth = () => {
   };
 
   const handleLogout = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch('http://localhost:3001/logOut', { method: 'POST' });
       if (res.ok) {
@@ -83,6 +93,8 @@ export const useAuth = () => {
     } catch (error) {
       console.error(error);
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -3,13 +3,12 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
-//configuracion del dns para el cliente de mongo, para que no se quede buscando el dns de la base de datos
 const dns = require("node:dns/promises");
 dns.setServers(["1.1.1.1"]);
 
 const app = express();
 const port = process.env.PORT || 3001;
-// Configuración de la conexión a MongoDB Atlas
+
 const uri = "mongodb+srv://alejandro08:contra1234@examen2.m5nddrb.mongodb.net/?appName=Examen2";
 const client = new MongoClient(uri, {
     serverApi: {
@@ -19,12 +18,20 @@ const client = new MongoClient(uri, {
     }
 });
 
+// Configuración CORS mejorada
+const corsOptions = {
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(cors());
-// Configuración de Firebase
+
 const { initializeApp } = require('firebase/app');
 const { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } = require('firebase/auth');
+
 const firebaseConfig = {
     apiKey: "AIzaSyApsFA2ApfmX2eMFThm192OqlrOAmw0lig",
     authDomain: "examen2ux2026.firebaseapp.com",
@@ -35,22 +42,31 @@ const firebaseConfig = {
     measurementId: "G-HWXZTN6MPF"
 };
 
-// Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp); // 👈 Inicializar UNA SOLA VEZ
 
-// CRUD Firebase
+// CRUD USUARIOS (Firebase + MongoDB Atlas)
 app.post('/createUser', async (req, res) => {
     try {
         const { email, password, nombre, apellido, username } = req.body;
+        
+        console.log('📝 Registrando usuario:', email); // Debug
 
-        // Crear el usuario en Firebase (Solo email y password)
-        const auth = getAuth(firebaseApp);
+        // Validación básica
+        if (!email || !password || !nombre || !apellido || !username) {
+            return res.status(400).send({
+                msj: 'Faltan campos requeridos',
+                error: 'Todos los campos son obligatorios'
+            });
+        }
+
+        // Crear el usuario en Firebase
         const firebaseResponse = await createUserWithEmailAndPassword(auth, email, password);
-
-        // Extraemos el UID único que Firebase le asignó
         const firebaseUID = firebaseResponse.user.uid;
+        
+        console.log('✅ Usuario creado en Firebase:', firebaseUID); // Debug
 
-        // Guardar los datos de perfil en MongoDB vinculados a ese UID de firebase
+        // Guardar los datos de perfil en MongoDB
         const perfilUsuario = {
             _id: firebaseUID,
             nombre: nombre,
@@ -61,6 +77,8 @@ app.post('/createUser', async (req, res) => {
         };
 
         await client.db("Base").collection('usuarios').insertOne(perfilUsuario);
+        
+        console.log('✅ Usuario guardado en MongoDB'); // Debug
 
         res.status(201).send({
             msj: "Usuario creado exitosamente en Firebase y MongoDB",
@@ -69,6 +87,22 @@ app.post('/createUser', async (req, res) => {
         });
 
     } catch (e) {
+        console.error('❌ Error en createUser:', e); // Debug
+        
+        // Manejar errores específicos de Firebase
+        if (e.code === 'auth/email-already-in-use') {
+            return res.status(400).send({
+                msj: 'El correo ya está registrado',
+                error: e.message
+            });
+        }
+        if (e.code === 'auth/weak-password') {
+            return res.status(400).send({
+                msj: 'La contraseña es muy débil',
+                error: e.message
+            });
+        }
+        
         res.status(500).send({
             msj: 'Hubo un error en el registro',
             error: e.message
@@ -76,36 +110,45 @@ app.post('/createUser', async (req, res) => {
     }
 });
 
-
 app.post('/logIn', async (req, res) => {
     try {
-        const auth = getAuth(firebaseApp);
+        console.log('📥 Intentando login con:', req.body.email); // Debug
+        
         const userCredential = await signInWithEmailAndPassword(auth, req.body.email, req.body.password);
         const firebaseUID = userCredential.user.uid;
-
-        // Buscar usuario en MongoDB usando el UID
-        const usuario = await client.db("Base").collection('usuarios').findOne({ _id: firebaseUID });
         
+        console.log('✅ Firebase UID obtenido:', firebaseUID); // Debug
+
+        const usuario = await client.db("Base").collection('usuarios').findOne({ _id: firebaseUID });
+
         if (!usuario) {
+            console.log('❌ Usuario no encontrado en MongoDB'); // Debug
             return res.status(404).send({
                 msj: 'Usuario no encontrado en la base de datos'
             });
         }
 
-        // Buscar posts del usuario
+        console.log('✅ Usuario encontrado en MongoDB:', usuario.email); // Debug
+
         const posts = await client.db("Base").collection('posts')
             .find({ authorId: firebaseUID })
             .toArray();
 
-        // Response en el formato requerido
-        res.status(200).send({
+        // 👇 Asegurarse de que la respuesta tenga el uid
+        const response = {
+            uid: firebaseUID,  // ✅ Campo requerido
             email: usuario.email,
             nombre: usuario.nombre,
             apellido: usuario.apellido,
             posts: posts
-        });
+        };
+
+        console.log('📤 Enviando respuesta:', response); // Debug
+
+        res.status(200).send(response);
 
     } catch (e) {
+        console.error('❌ Error en login:', e); // Debug
         res.status(500).send({
             msj: 'No lograste entrar sorry :(',
             error: e.message
@@ -115,20 +158,23 @@ app.post('/logIn', async (req, res) => {
 
 app.post('/logOut', async (req, res) => {
     try {
-        const auth = getAuth(firebaseApp);
         await auth.signOut();
         res.status(200).send({
             msj: "Que tengas un lindo dia, hasta luego"
         });
     } catch (e) {
+        console.error('❌ Error en logout:', e); // Debug
         res.status(500).send({
             msj: 'No se pudo salir sorry :( ',
-            error: e
+            error: e.message
         });
     }
 });
 
-// CRUD POST
+// ==========================================
+// CRUD POSTS (MongoDB Atlas)
+// ==========================================
+
 app.post('/createPost', async (req, res) => {
     try {
         const document = {
@@ -143,6 +189,7 @@ app.post('/createPost', async (req, res) => {
             postId: respuesta.insertedId
         });
     } catch (e) {
+        console.error('❌ Error en createPost:', e); // Debug
         res.status(500).send({
             msj: 'No se pudo guardar el registro :( ',
             error: e.message
@@ -159,6 +206,7 @@ app.get('/listPost', async (req, res) => {
             posts: response
         });
     } catch (e) {
+        console.error('❌ Error en listPost:', e); // Debug
         res.status(500).send({
             msj: 'Error al procesar a la soli',
             posts: e.message
@@ -168,9 +216,7 @@ app.get('/listPost', async (req, res) => {
 
 app.put('/editPost/:id', async (req, res) => {
     try {
-        const filtro = {
-            _id: new ObjectId(req.params.id)
-        };
+        const filtro = { _id: new ObjectId(req.params.id) };
         const nuevaInfo = {
             $set: {
                 "titulo": req.body.titulo,
@@ -178,11 +224,12 @@ app.put('/editPost/:id', async (req, res) => {
                 "authorId": req.body.authorId
             }
         };
-        const response = await client.db("Base").collection('posts').updateOne(filtro, nuevaInfo);
+        await client.db("Base").collection('posts').updateOne(filtro, nuevaInfo);
         res.status(200).send({
             msj: 'Post actualizado exitosamente'
         });
     } catch (e) {
+        console.error('❌ Error en editPost:', e); // Debug
         res.status(500).send({
             msj: 'Error al procesar a la soli',
             posts: e.message
@@ -192,9 +239,7 @@ app.put('/editPost/:id', async (req, res) => {
 
 app.delete('/deletePost/:id', async (req, res) => {
     try {
-        const filtro = {
-            _id: new ObjectId(req.params.id)
-        };
+        const filtro = { _id: new ObjectId(req.params.id) };
         const response = await client.db("Base").collection('posts').deleteOne(filtro);
 
         if (response.deletedCount >= 1) {
@@ -209,6 +254,7 @@ app.delete('/deletePost/:id', async (req, res) => {
             });
         }
     } catch (e) {
+        console.error('❌ Error en deletePost:', e); // Debug
         res.status(500).send({
             msj: 'Error al procesar a la soli',
             posts: e.message
@@ -216,14 +262,14 @@ app.delete('/deletePost/:id', async (req, res) => {
     }
 });
 
-
 app.listen(port, async () => {
-    console.log('Ahora si, el servidor esta activo en el puerto ', port);
+    console.log('🚀 Servidor activo en el puerto', port);
     try {
         await client.connect();
         await client.db("Base").command({ ping: 1 });
-        console.log('Conectados a la BD!!!!');
+        console.log('✅ Conectado a MongoDB Atlas');
+        console.log('✅ Firebase inicializado');
     } catch (error) {
-        console.error('Error al conectar a la base de datos:', error);
+        console.error('❌ Error al conectar a la base de datos:', error);
     }
 });

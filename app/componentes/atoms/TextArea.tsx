@@ -23,6 +23,7 @@ export const TextArea: React.FC<TextAreaProps> = ({
           w-full px-4 py-2.5 text-base
           bg-white border border-gray-200
           rounded-lg
+          text-gray-900
           placeholder:text-gray-400
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           transition-all duration-200

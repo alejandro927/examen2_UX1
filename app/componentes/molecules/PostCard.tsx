@@ -42,14 +42,14 @@ export const PostCard: React.FC<PostCardProps> = ({
               size="sm"
               onClick={() => onEdit(post)}
             >
-              Editar
+              ✏️ Editar
             </Button>
             <Button
               variant="danger"
               size="sm"
               onClick={() => onDelete(post._id)}
             >
-              Eliminar
+              🗑️ Eliminar
             </Button>
           </div>
         )}

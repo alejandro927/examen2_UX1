@@ -1,11 +1,12 @@
 'use client';
 
-import { MainTemplate } from './componentes/templates/MainTemplate'
+import { MainTemplate } from './componentes/templates/MainTemplate';
 import { AuthSection } from './componentes/organisms/AuthSection';
 import { PostFormSection } from './componentes/organisms/PostFormSection';
 import { PostFeed } from './componentes/organisms/PostFeed';
 import { useAuth } from './componentes/Hooks/useAuth';
 import { usePosts } from './componentes/Hooks/usePosts';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
   const { userUID, isLoading: authLoading, handleRegister, handleLogin, handleLogout } = useAuth();
@@ -19,8 +20,30 @@ export default function Home() {
     handlePostSubmit,
     handleDelete,
     seleccionarParaEditar,
-    limpiarFormulario
+    limpiarFormulario,
+    cargarPosts
   } = usePosts();
+
+  const [forceRender, setForceRender] = useState(0);
+
+  // Forzar re-render cuando userUID cambie
+  useEffect(() => {
+    setForceRender(prev => prev + 1);
+  }, [userUID]);
+
+  const onLogin = async (data: any) => {
+    const success = await handleLogin(data);
+    if (success) {
+      // Recargar posts después del login
+      await cargarPosts();
+    }
+    return success;
+  };
+
+  const onRegister = async (data: any) => {
+    const success = await handleRegister(data);
+    return success;
+  };
 
   const onPostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +56,8 @@ export default function Home() {
       <section className="mb-10">
         <AuthSection
           userUID={userUID}
-          onRegister={handleRegister}
-          onLogin={handleLogin}
+          onRegister={onRegister}
+          onLogin={onLogin}
           onLogout={handleLogout}
           isRegistering={authLoading}
           isLoggingIn={authLoading}
