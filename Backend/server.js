@@ -80,16 +80,35 @@ app.post('/createUser', async (req, res) => {
 app.post('/logIn', async (req, res) => {
     try {
         const auth = getAuth(firebaseApp);
-        signInWithEmailAndPassword(auth, req.body.email, req.body.password).then((userCredential) => {
-            res.status(200).send({
-                msj: 'Usuario logueado exitosamente',
-                response: userCredential
+        const userCredential = await signInWithEmailAndPassword(auth, req.body.email, req.body.password);
+        const firebaseUID = userCredential.user.uid;
+
+        // Buscar usuario en MongoDB usando el UID
+        const usuario = await client.db("Base").collection('usuarios').findOne({ _id: firebaseUID });
+        
+        if (!usuario) {
+            return res.status(404).send({
+                msj: 'Usuario no encontrado en la base de datos'
             });
+        }
+
+        // Buscar posts del usuario
+        const posts = await client.db("Base").collection('posts')
+            .find({ authorId: firebaseUID })
+            .toArray();
+
+        // Response en el formato requerido
+        res.status(200).send({
+            email: usuario.email,
+            nombre: usuario.nombre,
+            apellido: usuario.apellido,
+            posts: posts
         });
+
     } catch (e) {
         res.status(500).send({
-            msj: 'No lograste entrar sorry :( ',
-            error: e
+            msj: 'No lograste entrar sorry :(',
+            error: e.message
         });
     }
 });
