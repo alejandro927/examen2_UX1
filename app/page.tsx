@@ -1,4 +1,74 @@
-"use client";
+'use client';
+
+import { MainTemplate } from './componentes/templates/MainTemplate'
+import { AuthSection } from './componentes/organisms/AuthSection';
+import { PostFormSection } from './componentes/organisms/PostFormSection';
+import { PostFeed } from './componentes/organisms/PostFeed';
+import { useAuth } from './componentes/Hooks/useAuth';
+import { usePosts } from './componentes/Hooks/usePosts';
+
+export default function Home() {
+  const { userUID, isLoading: authLoading, handleRegister, handleLogin, handleLogout } = useAuth();
+  const {
+    posts,
+    titulo,
+    content,
+    editingPostId,
+    setTitulo,
+    setContent,
+    handlePostSubmit,
+    handleDelete,
+    seleccionarParaEditar,
+    limpiarFormulario
+  } = usePosts();
+
+  const onPostSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handlePostSubmit(userUID);
+  };
+
+  return (
+    <MainTemplate>
+      {/* Sección de Autenticación */}
+      <section className="mb-10">
+        <AuthSection
+          userUID={userUID}
+          onRegister={handleRegister}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          isRegistering={authLoading}
+          isLoggingIn={authLoading}
+        />
+      </section>
+
+      {/* Sección de Formulario de Posts */}
+      <section className="mb-10">
+        <PostFormSection
+          titulo={titulo}
+          content={content}
+          editingPostId={editingPostId}
+          isAuthenticated={!!userUID}
+          onSubmit={onPostSubmit}
+          onCancel={limpiarFormulario}
+          onTituloChange={setTitulo}
+          onContentChange={setContent}
+        />
+      </section>
+
+      {/* Sección de Feed */}
+      <section>
+        <PostFeed
+          posts={posts}
+          isAuthenticated={!!userUID}
+          onEdit={seleccionarParaEditar}
+          onDelete={handleDelete}
+        />
+      </section>
+    </MainTemplate>
+  );
+}
+
+/*"use client";
 
 import { useState, useEffect } from "react";
 
@@ -221,11 +291,11 @@ export default function Home() {
       <h1 style={{ textAlign: "center" }}>Plataforma de Publicaciones - Evaluación 2</h1>
       <hr style={{ border: "0", height: "1px", background: "#ccc", margin: "1.5rem 0" }} />
 
-      {/* SECCIÓN 1: LOGIN Y REGISTRO COMPLETO */}
+      {/* SECCIÓN 1: LOGIN Y REGISTRO COMPLETO }
       <section style={{ marginBottom: "2.5rem" }}>
         {!userUID ? (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
-            {/* Formulario Registro Completo */}
+            {/* Formulario Registro Completo }
             <div style={{ background: "#f8fafc", padding: "1.5rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
               <h2 style={{ marginTop: 0, fontSize: "1.25rem" }}>1. Crear una Cuenta</h2>
               <form onSubmit={handleRegister} style={{ display: "flex", gap: "10px", flexDirection: "column" }}>
@@ -238,7 +308,7 @@ export default function Home() {
               </form>
             </div>
 
-            {/* Formulario Login */}
+            {/* Formulario Login }
             <div style={{ background: "#f8fafc", padding: "1.5rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
               <h2 style={{ marginTop: 0, fontSize: "1.25rem" }}>2. Acceso Autorizado</h2>
               <form onSubmit={handleLogin} style={{ display: "flex", gap: "10px", flexDirection: "column" }}>
@@ -259,7 +329,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* SECCIÓN 2: FORMULARIO INTERACTIVO (CREAR / EDITAR) */}
+      {/* SECCIÓN 2: FORMULARIO INTERACTIVO (CREAR / EDITAR) }
       <section style={{ background: "#f1f5f9", padding: "1.5rem", borderRadius: "8px", marginBottom: "2.5rem" }}>
         <h2 style={{ marginTop: 0, color: editingPostId ? "#b45309" : "#1e293b" }}>
           {editingPostId ? "⚠️ Panel de Modificación de Post" : "Crear Nueva Publicación en la Red"}
@@ -313,7 +383,7 @@ export default function Home() {
         </form>
       </section>
 
-      {/* SECCIÓN 3: FEED VISUAL CON ACCIONES DE MODIFICACIÓN Y BORRADO */}
+      {/* SECCIÓN 3: FEED VISUAL CON ACCIONES DE MODIFICACIÓN Y BORRADO }
       <section>
         <h2>Feed de Publicaciones Globales</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -331,7 +401,7 @@ export default function Home() {
                   boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
                 }}
               >
-                {/* Imprime de manera inteligente tanto titulo como title según el estado de guardado del backend */}
+                {/* Imprime de manera inteligente tanto titulo como title según el estado de guardado del backend }
                 <h3 style={{ margin: "0 0 10px 0", fontSize: "1.35rem", color: "#0f172a" }}>
                   {post.titulo || post.title || "Post sin título"}
                 </h3>
@@ -342,7 +412,7 @@ export default function Home() {
                     Editor Responsable ID: <code style={{ background: "#e2e8f0", padding: "2px 4px", borderRadius: "3px" }}>{post.authorId}</code>
                   </small>
 
-                  {/* Acciones del Feed condicionados a que el usuario esté logueado */}
+                  {/* Acciones del Feed condicionados a que el usuario esté logueado/}
                   {userUID && (
                     <div style={{ display: "flex", gap: "8px" }}>
                       <button
@@ -368,3 +438,4 @@ export default function Home() {
     </main>
   );
 }
+*/
